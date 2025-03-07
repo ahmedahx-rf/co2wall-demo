@@ -1,24 +1,19 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { Component, computed, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { RippleModule } from 'primeng/ripple';
 import { AppFloatingConfigurator } from '../../layout/component/app.floatingconfigurator';
-import { SupabaseService } from '../../services/supabase.service';
-import { MessageService } from 'primeng/api';
-import { ToastModule } from 'primeng/toast';
 
 @Component({
     selector: 'app-login',
     standalone: true,
-    providers: [MessageService],
-    imports: [ButtonModule, CheckboxModule, InputTextModule, PasswordModule, FormsModule, RouterModule, RippleModule, AppFloatingConfigurator, ToastModule, ReactiveFormsModule],
+    imports: [ButtonModule, CheckboxModule, InputTextModule, PasswordModule, FormsModule, RouterModule, RippleModule, AppFloatingConfigurator],
     template: `
         <app-floating-configurator />
-        <p-toast />
         <div class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden">
             <div class="flex flex-col items-center justify-center">
                 <div style="border-radius: 56px; padding: 0.3rem; background: linear-gradient(180deg, var(--primary-color) 10%, rgba(33, 150, 243, 0) 30%)">
@@ -41,63 +36,33 @@ import { ToastModule } from 'primeng/toast';
                                     />
                                 </g>
                             </svg>
-                            <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">Welcome to RF-Frontend LV!</div>
-                            <span class="text-muted-color font-medium">Login to continue</span>
+                            <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">{{ title() }}</div>
+                            <span class="text-muted-color font-medium">Enter your email to reset your account</span>
                         </div>
-                        <form [formGroup]="form" onsubmit="">
+
+                        <div>
                             <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
-                            <input pInputText id="email1" type="text" placeholder="Email address" class="w-full md:w-[30rem] mb-8" formControlName="email" />
+                            <input pInputText id="email1" type="text" placeholder="Email address" class="w-full md:w-[30rem] mb-8" [(ngModel)]="email" />
 
-                            <label for="password1" class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">Password</label>
-                            <p-password id="password1" formControlName="password" placeholder="Password" [toggleMask]="true" styleClass="mb-4" [fluid]="true" [feedback]="false"></p-password>
-
-                            <div class="flex items-center justify-between mt-2 mb-8 gap-8">
-                                <div class="flex items-center"></div>
-                                <span class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">Forgot password?</span>
-                            </div>
-                            <p-button label="Login" styleClass="w-full" [disabled]="form.invalid" [loading]="loading" type="submit" (onClick)="login()"></p-button>
-                        </form>
+                            <div class="flex items-center justify-between mt-2 mb-8 gap-8"></div>
+                            <p-button label="Reset" styleClass="w-full" (onClick)="submit()"></p-button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     `
 })
-export class Login {
-    toast = inject(MessageService);
-    authService = inject(SupabaseService);
-    router = inject(Router);
-    supabase = this.authService.client;
-    loading = false;
+export class Reset {
+    email: string = '';
 
-    form = new FormGroup({
-        email: new FormControl('', [Validators.required, Validators.email]),
-        password: new FormControl('', [Validators.required, Validators.minLength(6)])
+    submitted = signal<boolean>(false);
+
+    title = computed(() => {
+        return this.submitted() ? 'Reset Instruction has been sent' : 'Welcome to RF-Frontend LV!';
     });
 
-    login() {
-        this.loading = true;
-
-        // Get the form value
-        const formValue = this.form.value;
-
-        // Ensure email and password are non-null and non-undefined
-        const email = formValue.email!; // Default to an empty string if email is null/undefined
-        const password = formValue.password!; // Default to an empty
-
-        // Pass the cleaned-up data to the register service
-        this.authService.login(email, password).subscribe({
-            next: () => {
-                this.loading = false;
-                this.toast.add({ severity: 'success', summary: 'Login Successful', detail: '' });
-                setTimeout(() => this.router.navigate(['/']), 500);
-            },
-            error: (err) => {
-                this.loading = false;
-                this.toast.add({ severity: 'error', summary: 'Login Failed', detail: err });
-            }
-        });
+    submit() {
+        this.submitted.update((x) => !x);
     }
-
-    checked: boolean = false;
 }

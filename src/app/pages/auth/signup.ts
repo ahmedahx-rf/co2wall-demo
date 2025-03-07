@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
@@ -10,9 +10,10 @@ import { AppFloatingConfigurator } from '../../layout/component/app.floatingconf
 import { SupabaseService } from '../../services/supabase.service';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
+import { SignUpWithPasswordCredentials } from '@supabase/supabase-js';
 
 @Component({
-    selector: 'app-login',
+    selector: 'app-signup',
     standalone: true,
     providers: [MessageService],
     imports: [ButtonModule, CheckboxModule, InputTextModule, PasswordModule, FormsModule, RouterModule, RippleModule, AppFloatingConfigurator, ToastModule, ReactiveFormsModule],
@@ -41,41 +42,62 @@ import { ToastModule } from 'primeng/toast';
                                     />
                                 </g>
                             </svg>
-                            <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">Welcome to RF-Frontend LV!</div>
-                            <span class="text-muted-color font-medium">Login to continue</span>
+                            <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">{{ title() }}</div>
+                            <span class="text-muted-color font-medium">{{ topic() }}</span>
                         </div>
-                        <form [formGroup]="form" onsubmit="">
-                            <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
-                            <input pInputText id="email1" type="text" placeholder="Email address" class="w-full md:w-[30rem] mb-8" formControlName="email" />
+                        @if (success()) {
+                        } @else {
+                            <div [formGroup]="form">
+                                <div formGroupName="options">
+                                    <div formGroupName="data">
+                                        <label for="first-name" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">First name</label>
+                                        <input pInputText id="first-name" type="text" placeholder="First Name" class="w-full md:w-[30rem] mb-8" formControlName="first_name" />
 
-                            <label for="password1" class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">Password</label>
-                            <p-password id="password1" formControlName="password" placeholder="Password" [toggleMask]="true" styleClass="mb-4" [fluid]="true" [feedback]="false"></p-password>
+                                        <label for="last-name" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Last name</label>
+                                        <input pInputText id="last-name" type="text" placeholder="Last Name" class="w-full md:w-[30rem] mb-8" formControlName="last_name" />
+                                    </div>
+                                </div>
 
-                            <div class="flex items-center justify-between mt-2 mb-8 gap-8">
-                                <div class="flex items-center"></div>
-                                <span class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">Forgot password?</span>
+                                <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
+                                <input pInputText id="email1" type="text" placeholder="Email address" class="w-full md:w-[30rem] mb-8" formControlName="email" />
+
+                                <label for="password1" class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">Password</label>
+                                <p-password id="password1" formControlName="password" placeholder="Password" [toggleMask]="true" styleClass="mb-4" [fluid]="true" [feedback]="false"></p-password>
+
+                                <div class="flex items-center justify-between mt-2 mb-8 gap-8">
+                                    <div class="flex items-center"></div>
+                                </div>
+                                <p-button label="Sign Up" styleClass="w-full" [disabled]="form.invalid" [loading]="loading" (onClick)="signup()"></p-button>
                             </div>
-                            <p-button label="Login" styleClass="w-full" [disabled]="form.invalid" [loading]="loading" type="submit" (onClick)="login()"></p-button>
-                        </form>
+                        }
                     </div>
                 </div>
             </div>
         </div>
     `
 })
-export class Login {
+export class Signup {
     toast = inject(MessageService);
     authService = inject(SupabaseService);
-    router = inject(Router);
     supabase = this.authService.client;
     loading = false;
+    success = signal<boolean>(false);
+    title = computed(() => (this.success() ? 'Registeration Successful' : 'Welcome to RF-Frontend LV!'));
+    topic = computed(() => (this.success() ? 'Check you email for further instructions' : 'Sign up to continue'));
 
     form = new FormGroup({
         email: new FormControl('', [Validators.required, Validators.email]),
-        password: new FormControl('', [Validators.required, Validators.minLength(6)])
+        password: new FormControl('', [Validators.required, Validators.minLength(6)]),
+        options: new FormGroup({
+            data: new FormGroup({
+                first_name: new FormControl('', [Validators.required, Validators.minLength(2)]),
+                last_name: new FormControl('', [Validators.required, Validators.minLength(2)]),
+                display_name: new FormControl('')
+            })
+        })
     });
 
-    login() {
+    signup() {
         this.loading = true;
 
         // Get the form value
@@ -83,18 +105,32 @@ export class Login {
 
         // Ensure email and password are non-null and non-undefined
         const email = formValue.email!; // Default to an empty string if email is null/undefined
-        const password = formValue.password!; // Default to an empty
+        const password = formValue.password!; // Default to an empty string if password is null/undefined
+
+        // Optionally handle 'options' or other nested form fields as needed
+        const options = formValue.options || {};
+
+        // Assign display_name or first_name to the options object safely
+        options.data = options.data || {}; // Ensure `data` exists
+        options.data.display_name = `${options?.data?.first_name} ${options?.data?.last_name}`;
+
+        // Create the registration object, ensuring all fields are correct
+        const signUpData: SignUpWithPasswordCredentials = {
+            email: email,
+            password: password,
+            options: options
+        };
 
         // Pass the cleaned-up data to the register service
-        this.authService.login(email, password).subscribe({
+        this.authService.register(signUpData).subscribe({
             next: () => {
                 this.loading = false;
-                this.toast.add({ severity: 'success', summary: 'Login Successful', detail: '' });
-                setTimeout(() => this.router.navigate(['/']), 500);
+                this.success.update((x) => !x);
+                this.toast.add({ severity: 'success', summary: 'Registration Successful', detail: 'Your account has been created successfully.' });
             },
             error: (err) => {
                 this.loading = false;
-                this.toast.add({ severity: 'error', summary: 'Login Failed', detail: err });
+                this.toast.add({ severity: 'error', summary: 'Registration Failed', detail: err });
             }
         });
     }
