@@ -9,7 +9,7 @@ FROM node:latest as build
 WORKDIR /usr/local/app
 
 # Add the source code to app
-COPY ./lv /usr/local/app/
+COPY ./co2wall /usr/local/app/
 
 # Install all the dependencies
 RUN npm install
